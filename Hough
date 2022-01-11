@@ -1,0 +1,186 @@
+clear all;
+clc;
+close all;
+
+
+cd '\\hd.ad.syr.edu\01\5c3eac\Documents\Desktop\LLPS';
+
+file_path = '\\hd.ad.syr.edu\01\5c3eac\Documents\Desktop\LLPS\hand_PC_test\200mM NaCl background - 1.tif';
+
+info = imfinfo(file_path);  
+
+start_frame = 1;
+finish_frame = numel(info);
+
+bk_data = cell(1,finish_frame);
+
+
+for i = start_frame:finish_frame %%%%Read all background file and store as cell array, each cell contain a background picture
+    bk_data{i} = imread(file_path,i);
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%Averaging the background
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Y = cat(3,bk_data{:});         %%%%Cat the array in the 3rd dimension
+bk_avg = mean(Y,3);            %%%%Take mean in the 3rd dimension
+% im_bk=mat2gray(bk_avg);        %%%%Scale the number from 0 to 1
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%Data image
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+image_path = '\\hd.ad.syr.edu\01\5c3eac\Documents\Desktop\LLPS\hand_PC_test\200mMStandard LLPSmovie001.tif';
+
+info = imfinfo(image_path);
+start_frame = 1;
+finish_frame = numel(info);
+select_frame = 62;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%Read data video into each frame, analysis 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+for i = select_frame:select_frame
+    im = imread(image_path,i);
+    
+    ims = double(im)-bk_avg;   %image minus background, take it out, replace ims with im_filt
+    
+%    imM_filt = medfilt2(ims, [3 3]);
+%     im_filt = medfilt2(im, [3 3]);
+    
+%    imG_filt = imgaussfilt(ims,3.00);
+
+
+    
+
+
+
+    
+     imMNorm_bks = mat2gray(ims);
+%    imGNorm_bks = mat2gray(imG_filt);
+     imNorm = mat2gray(im);
+    
+%     figure
+%     imshow(imMNorm_bks)
+    
+%     figure
+%     hist = histogram(imMNorm_bks)
+    
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%% Finding cutoff by calculating the FWHM of the histogram
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    histdata = [];
+    for i = 1:2048
+        accu = [];
+        for j = 1:2048
+            accu(j) = imMNorm_bks(i,j);
+        end
+        histdata = cat(1,histdata,accu.');
+    end
+    ft = histfit(histdata);
+    pd = fitdist(histdata,'Normal');
+    cutoff = pd.mu + pd.sigma*sqrt(2*log(2));
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
+
+    imThresh =  imMNorm_bks >cutoff;
+%     figure
+%     imshow(imThresh)
+    
+     imThresh1 = imclearborder(imThresh);
+     imThresh2 = bwareafilt(imThresh1, [15 50000]);
+%      figure
+%      imshow(imThresh2)
+
+
+    radius = [10,50];
+    [centers, radii, metric] = imfindcircles(imThresh2,radius);
+    
+    centersStrong5 = centers(:,:); 
+    radiiStrong5 = radii(:);
+    metricStrong5 = metric(:);
+    
+    
+    figure
+    imshow(imNorm)
+    fig = viscircles(centersStrong5, radiiStrong5,'EdgeColor','b');
+    
+    file_name = sprintf('200mM Standard LLPS movie 001 - %d.fig',select_frame);
+    cd '\\hd.ad.syr.edu\01\5c3eac\Documents\Desktop\LLPS\analyze_data';
+    
+    saveas(fig,file_name)
+
+
+     
+      end      
+
+
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%% File manipulate
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%     name = [];
+%     accu = 0;
+%     for i = 1:size(image_path,2)
+%         ch = image_path(1,i);
+%         [num,tf] =  str2num(image_path(1,i));
+%         
+%         if tf == 0;
+%             if accu == 0;
+%                 continue
+%             elseif accu == 8;
+%                 return
+%             else
+%                 name = [];
+%                 accu = 0;
+%                 continue
+%             end
+%         else
+%             if accu ~= 2;
+%                 name = horzcat(name,ch);
+%                 accu = accu + 1;
+%                 continue
+%             elseif accu == 8;
+%                 name = [];
+%                 accu = 0;
+%                 continue
+%             elseif str2num(name) == 20;
+%                 name = horzcat(name,ch);
+%                 accu = accu + 1;
+%                 continue
+%             else
+%                 name = [];
+%                 accu = 0;
+%                 continue
+%                 
+%             end    
+%                 
+%         end
+%     end    
+% 
+% end    
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%       check1 = 0;
+%       check2 = 0;
+%       for i = 1:size(image_path,2)
+%           if check1 == 1;
+%               if image_path(1,i) == 'M'
+%                   n = i-4;
+%                   return;
+%               elseif  image_path(1,i) == '\';
+%                   d = i+1;
+%                   check1 = 0;
+%                   continue;
+%               else
+%                   check1 = 0;
+%                   continue;
+%               end
+%           elseif image_path(1,i) == 'm' | image_path(1,i) == 'a';
+%                   check1 = 1;
+%                   continue;
+%           else
+%               continue;
+%           end
+%        
+%       end      
+
+
+
+
